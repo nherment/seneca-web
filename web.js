@@ -209,7 +209,6 @@ module.exports = function( options ) {
 
     var service = function(req,res,next) {
       var si = req.seneca || instance
-
       if( spec.startware ) {
         //var begin_startware = Date.now()
         spec.startware.call(si,req,res,do_maprouter)
@@ -295,8 +294,7 @@ module.exports = function( options ) {
   }
 
   var web = function( req, res, next ) {
-    res.seneca = req.seneca = seneca.delegate({req$:req,res$:res})
-
+    res.seneca = req.seneca = seneca.delegate({req$:req,res$:res,fatal$:false})
     next_service(req,res,next,0)
   }
 
@@ -439,6 +437,7 @@ function make_prepostmap( spec, prefix, http ) {
 
 
 function defaultresponder(req,res,handlerspec,err,obj) {
+
   var outobj;
 
   if( _.isObject(obj) ) {
@@ -473,7 +472,7 @@ function defaultresponder(req,res,handlerspec,err,obj) {
       })
     }
   }
-  else if( _.isUndefined(obj) ) {
+  else if( _.isUndefined(obj) || _.isNull(obj)) {
     outobj = ''
   }
   else {
@@ -488,7 +487,12 @@ function defaultresponder(req,res,handlerspec,err,obj) {
     delete outobj.httpstatus$
   }
 
-  var objstr = err ? err.toString() : stringify(outobj)
+  var objstr
+  if(err) {
+    objstr = err.toJSON ? err.toJSON() : err.toString()
+  } else {
+    objstr =  stringify(outobj)
+  }
   var code   = 200
 
   if(err) {
@@ -512,7 +516,7 @@ function defaultresponder(req,res,handlerspec,err,obj) {
     res.writeHead(code, {
       'Location': redirect
     })
-    res.end()
+    res.end(JSON.stringify(obj))
   }
   else {
     res.writeHead(code,{
