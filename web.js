@@ -489,7 +489,7 @@ function defaultresponder(req,res,handlerspec,err,obj) {
 
   var objstr
   if(err) {
-    objstr = err.toJSON ? err.toJSON() : err.toString()
+    objstr = stringifyError(err)
   } else {
     objstr =  stringify(outobj)
   }
@@ -652,4 +652,25 @@ function makemaprouter(instance,spec,prefix,actmap,routemap,servicedesc,timestat
 
     make_prepostmap( spec, prefix, http )
   })
+}
+
+// this feels like a hack. At some point we need to agree on an error
+// format so that we can bubble up error data to the client
+function stringifyError(err) {
+  if(err && err instanceof Error) {
+    var errorObj = {}
+    
+    for(var attr in err) {
+      if(err.hasOwnProperty(attr) && typeof err[attr] !== 'function') {
+        errorObj[attr] = err[attr]
+      }
+    }
+    errorObj.name = err.name // (nherment) I put that line because the transport is doing it
+    errorObj.message = err.message
+    return JSON.stringify(errorObj)
+  } else {
+    // don't try/catch here. No-one should bubble up an error object which is not
+    // serializable as it does not make sense in a distributed env.
+    return JSON.stringify(err)
+  }
 }
